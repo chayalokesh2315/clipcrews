@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // admins are created by hand in the console: collection `admins`, document id = the admin's Auth UID
+    function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+      match /favorites/{id} { allow read, write: if signedIn() && request.auth.uid == uid; }
+    }
+    match /creators/{uid} {
+      allow read: if true;
+      allow create: if signedIn() && request.auth.uid == uid && !('verified' in request.resource.data);
+      allow delete: if signedIn() && request.auth.uid == uid;
+      // owner edits their profile but can never set `verified` (admins set it in the console);
+      // any signed-in user may only change rating fields (reviews)
+      allow update: if signedIn() && (
+        (request.auth.uid == uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verified']))
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'totalReviews'])
+        || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verified'])));
+    }
+    match /reviews/{id} {
+      allow read: if true;
+      allow create: if signedIn();
+    }
+    match /bookings/{id} {
+      allow read: if signedIn() && (resource.data.customerId == request.auth.uid || resource.data.creatorId == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
+      // creator: accept/reject/complete. customer: cancel/dispute. Payments are written only by Cloud Functions.
+      allow update: if signedIn() && (
+        (resource.data.creatorId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && ((resource.data.status == 'pending' && request.resource.data.status in ['accepted', 'rejected'])
+            || (resource.data.status == 'paid' && request.resource.data.status == 'completed')))
+        || (resource.data.customerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'dispute'])
+          && ((resource.data.status in ['pending', 'accepted'] && request.resource.data.status == 'cancelled')
+            || (resource.data.status in ['paid', 'completed'] && request.resource.data.status == 'disputed'))));
+    }
+    match /admins/{uid} { allow read: if signedIn() && request.auth.uid == uid; }
+    match /verifications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.status == 'pending';
+      allow update: if signedIn() && (
+        (request.auth.uid == uid && resource.data.status == 'rejected' && request.resource.data.status == 'pending')
+        || (isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewNote', 'reviewedAt', 'reviewedBy'])));
+    }
+    // payment ledger: written only by Cloud Functions; admin may only record payouts
+    match /transactions/{id} {
+      allow read: if signedIn() && (isAdmin() || resource.data.creatorId == request.auth.uid || resource.data.customerId == request.auth.uid);
+      allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payoutStatus', 'payoutRef', 'paidOutAt']);
+    }
+    // allowed lump-sum price range per role, managed by admins
+    match /rateBands/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /notifications/{id} {
+      allow create: if signedIn();
+      allow read, update: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+    // public busy slots used for double-booking checks (no personal data)
+    match /busy/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.customerId == request.auth.uid;
+    }
+    // starting point: tighten once chat participants are stored on each chat document
+    match /chats/{chatId}/{document=**} { allow read, write: if signedIn(); }
+  }
+}
