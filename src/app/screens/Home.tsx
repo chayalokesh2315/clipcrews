@@ -6,6 +6,9 @@ import { db } from "../../firebase";
 import HeartButton from "../components/HeartButton";
 import VerifiedBadge from "../components/VerifiedBadge";
 import NotificationBell from "../components/NotificationBell";
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebase";
+import { useAuthRole } from "../hooks/useAuthRole";
 import ThemeToggle from "../components/ThemeToggle";
 
 const TONES = ["bg-primary text-primary-foreground", "bg-accent text-accent-foreground", "bg-secondary text-secondary-foreground", "bg-card text-card-foreground border"];
@@ -28,15 +31,19 @@ type Creator = { id: string; name?: string; category?: string; location?: string
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user, home } = useAuthRole();
   const [q, setQ] = useState("");
   const [featured, setFeatured] = useState<Creator[] | null>(null);
   const [roles, setRoles] = useState<{ label: string; count: number }[]>([]);
 
   useEffect(() => {
-    getDocs(collection(db, "creators"))
-      .then((s) => {
-        const all = s.docs.map((d) => ({ id: d.id, ...(d.data() as object) } as Creator));
-        setFeatured([...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 4));
+    Promise.all([getDocs(collection(db, "creators")), getDocs(collection(db, "reviews")).catch(() => null)])
+      .then(([s, rv]) => {
+        // ratings come from real reviews only, never from the stored profile numbers
+        const st = new Map<string, { sum: number; n: number }>();
+        rv?.docs.forEach((d) => { const x = d.data(); const e = st.get(x.creatorId) ?? { sum: 0, n: 0 }; e.sum += Number(x.rating) || 0; e.n++; st.set(x.creatorId, e); });
+        const all = s.docs.map((d) => { const r = st.get(d.id); return { id: d.id, ...(d.data() as object), rating: r ? r.sum / r.n : 0, totalReviews: r?.n ?? 0 } as Creator; });
+        setFeatured([...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.totalReviews ?? 0) - (a.totalReviews ?? 0)).slice(0, 4));
         const m = new Map<string, { label: string; count: number }>();
         all.forEach((c) => {
           const k = String(c.category ?? "").trim().toLowerCase();
@@ -64,8 +71,17 @@ export default function Home() {
             <Link to="/contact" className="hidden sm:inline hover:text-primary">Contact</Link>
             <NotificationBell />
             <ThemeToggle />
-            <Link to="/login" className="px-4 py-2 rounded-full border hover:bg-secondary">Log in</Link>
-            <Link to="/register" className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium">Join</Link>
+            {user ? (
+              <>
+                <Link to={home} className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium">My dashboard</Link>
+                <button onClick={async () => { await signOut(auth); navigate("/"); }} className="px-4 py-2 rounded-full border hover:bg-secondary">Log out</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="px-4 py-2 rounded-full border hover:bg-secondary">Log in</Link>
+                <Link to="/register" className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium">Join</Link>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -104,7 +120,7 @@ export default function Home() {
 
         {(featured === null || featured.length > 0) && (
           <section aria-labelledby="top" className="pb-20">
-            <h2 id="top" className="text-2xl md:text-3xl font-bold mb-6">Top rated right now</h2>
+            <h2 id="top" className="text-2xl md:text-3xl font-bold mb-6">Book a creator</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {featured === null
                 ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-72 rounded-3xl bg-muted animate-pulse" />)
@@ -121,7 +137,7 @@ export default function Home() {
                           {c.location && <span className="flex items-center gap-1 text-muted-foreground truncate"><MapPin size={14} />{c.location}</span>}
                         </div>
                       </div>
-                    </button><HeartButton id={c.id} /></div>
+                    </button><Link to={`/booking/${c.id}`} className="mt-2 block text-center px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold">Book now</Link><HeartButton id={c.id} /></div>
                   ))}
             </div>
           </section>
@@ -140,6 +156,7 @@ export default function Home() {
           </ol>
         </section>
 
+        {!user && (
         <section className="pb-24">
           <div className="rounded-3xl bg-primary text-primary-foreground p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
@@ -149,6 +166,7 @@ export default function Home() {
             <Link to="/register" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-background text-foreground font-semibold self-start">List your work <ArrowRight size={18} /></Link>
           </div>
         </section>
+        )}
       </main>
     </div>
   );

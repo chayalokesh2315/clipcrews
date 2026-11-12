@@ -47,6 +47,17 @@ export default function Admin() {
       load();
     } catch { toast("Could not save the decision."); }
   };
+  const recalc = async () => {
+    try {
+      const [cs, rs] = await Promise.all([getDocs(collection(db, "creators")), getDocs(collection(db, "reviews"))]);
+      const st = new Map<string, { sum: number; n: number }>();
+      rs.docs.forEach((d) => { const x = d.data(); const e = st.get(x.creatorId) ?? { sum: 0, n: 0 }; e.sum += Number(x.rating) || 0; e.n++; st.set(x.creatorId, e); });
+      const b = writeBatch(db);
+      cs.docs.slice(0, 450).forEach((d) => { const s = st.get(d.id); b.update(d.ref, { rating: s ? s.sum / s.n : 0, totalReviews: s?.n ?? 0 }); });
+      await b.commit();
+      toast("Ratings now match real reviews.");
+    } catch { toast("Could not recalculate ratings."); }
+  };
   const openId = async (path: string) => {
     try { window.open(await getDownloadURL(ref(storage, path)), "_blank", "noopener"); } catch { toast("Could not open the document."); }
   };
@@ -58,7 +69,7 @@ export default function Admin() {
   const list = rows.filter((r) => r.status === tab);
   return (
     <main className="mx-auto max-w-4xl px-5 py-10">
-      <h1 className="text-4xl font-extrabold">Admin</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-4xl font-extrabold">Admin</h1><button onClick={recalc} className="px-4 py-2 rounded-full border bg-card text-sm font-semibold">Fix ratings from real reviews</button></div>
       <div className="mt-4 flex gap-2" role="tablist" aria-label="Admin sections">
         {([["verify", "Verification"], ["pricing", "Rate ranges"], ["earnings", "Earnings"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={section === k} onClick={() => setSection(k)} className={`px-4 py-2 rounded-full text-sm font-semibold ${section === k ? "bg-primary text-primary-foreground" : "border bg-card"}`}>{l}</button>)}
       </div>

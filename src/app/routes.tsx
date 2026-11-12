@@ -1,6 +1,5 @@
-import { createBrowserRouter, Outlet } from "react-router-dom";
-import BottomNav from "./components/BottomNav";
-import CommandMenu from "./components/CommandMenu";
+import { createBrowserRouter } from "react-router-dom";
+import AppLayout from "./AppLayout";
 
 import Splash from "./screens/Splash";
 
@@ -45,143 +44,120 @@ import Verification from "./screens/Verification";
 import Admin from "./screens/Admin";
 import Earnings from "./screens/Earnings";
 
-function AppLayout() {
-  return (
-    <>
-      <Outlet />
-      <CommandMenu />
-      <BottomNav />
-    </>
-  );
-}
 
-export const router =
-  createBrowserRouter([
-    {
-      element: <AppLayout />,
-      children: [
+    export const router =
+      createBrowserRouter([
         {
-          path: "/",
-          element: <Home />,
+          element: <AppLayout />,
+          children: [
+            {
+              path: "/",
+              element: <Home />,
+            },
+            {
+              path: "/bookings",
+              element: <Bookings />,
+            },
+            {
+              path: "/availability",
+              element: <Availability />,
+            },
+            {
+              path: "/packages",
+              element: <Packages />,
+            },
+            {
+              path: "/verification",
+              element: <Verification />,
+            },
+            {
+              path: "/earnings",
+              element: <Earnings />,
+            },
+            {
+              path: "/admin",
+              element: <Admin />,
+            },
+            {
+              path: "/favorites",
+              element: <Favorites />,
+            },
+            {
+              path: "/match",
+              element: <Recommend />,
+            },
+            {
+              path: "/splash",
+              element: <Splash />,
+            },
+            {
+              path: "/login",
+              element: <Login />,
+            },
+            {
+              path: "/register",
+              element: <Register />,
+            },
+            {
+              path: "/categories",
+              element: <Categories />,
+            },
+            {
+              path: "/creators/:category/:subcategory",
+              element: <CreatorList />,
+            },
+            {
+              path: "/creator/:id",
+              element: <CreatorProfile />,
+            },
+            {
+              path: "/booking/:creatorId",
+              element: <Booking />,
+            },
+            {
+              path: "/dashboard",
+              element: <Dashboard />,
+            },
+            {
+              path: "/customer-dashboard",
+              element: <CustomerDashboard />,
+            },
+            {
+              path: "/creator-setup",
+              element: <CreatorSetup />,
+            },
+            {
+              path: "/portfolio-upload",
+              element: <PortfolioUpload />,
+            },
+            {
+              path: "/about",
+              element: <AboutUs />,
+            },
+            {
+              path: "/contact",
+              element: <ContactUs />,
+            },
+            {
+              path: "/chat/:creatorId",
+              element: <Chat />,
+            },
+            {
+              path: "/creator-messages",
+              element: <CreatorMessages />,
+            },
+            {
+              path: "/creator-chat/:chatId",
+              element: <CreatorChat />,
+            },
+            {
+              path: "/review/:creatorId",
+              element: <AddReview />,
+            },
+            {
+              path: "/customer/:id",
+              element: <CustomerProfile />,
+            },
+          ],
         },
-        {
-          path: "/bookings",
-          element: <Bookings />,
-        },
-        {
-          path: "/availability",
-          element: <Availability />,
-        },
-        {
-          path: "/packages",
-          element: <Packages />,
-        },
-        {
-          path: "/verification",
-          element: <Verification />,
-        },
-        {
-          path: "/earnings",
-          element: <Earnings />,
-        },
-        {
-          path: "/admin",
-          element: <Admin />,
-        },
-        {
-          path: "/favorites",
-          element: <Favorites />,
-        },
-        {
-          path: "/match",
-          element: <Recommend />,
-        },
-        {
-          path: "/splash",
-          element: <Splash />,
-        },
-
-        {
-          path: "/login",
-          element: <Login />,
-        },
-
-        {
-          path: "/register",
-          element: <Register />,
-        },
-
-        {
-          path: "/categories",
-          element: <Categories />,
-        },
-
-        {
-          path: "/creators/:category/:subcategory",
-          element: <CreatorList />,
-        },
-
-        {
-          path: "/creator/:id",
-          element: <CreatorProfile />,
-        },
-
-        {
-          path: "/booking/:creatorId",
-          element: <Booking />,
-        },
-
-        {
-          path: "/dashboard",
-          element: <Dashboard />,
-        },
-
-        {
-          path: "/customer-dashboard",
-          element: <CustomerDashboard />,
-        },
-
-        {
-          path: "/creator-setup",
-          element: <CreatorSetup />,
-        },
-
-        {
-          path: "/portfolio-upload",
-          element: <PortfolioUpload />,
-        },
-
-        {
-          path: "/about",
-          element: <AboutUs />,
-        },
-
-        {
-          path: "/contact",
-          element: <ContactUs />,
-        },
-
-        {
-          path: "/chat/:creatorId",
-          element: <Chat />,
-        },
-        {
-          path: "/creator-messages",
-          element: <CreatorMessages />,
-        },
-        {
-          path: "/creator-chat/:chatId",
-          element: <CreatorChat />,
-        },
-        {
-          path: "/review/:creatorId",
-          element: <AddReview />,
-        },
-
-        {
-          path: "/customer/:id",
-          element: <CustomerProfile />,
-        },
-      ],
-    },
-  ]);
+      ]);

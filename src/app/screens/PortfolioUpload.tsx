@@ -150,9 +150,10 @@ export default function PortfolioUpload() {
       await uploadBytes(r, file);
       const url = await getDownloadURL(r);
       await updateDoc(doc(db, "creators", user.uid), isVideo ? { portfolioVideos: arrayUnion(url) } : { portfolioImages: arrayUnion(url) });
+      if (isVideo) setVideos((v: any[]) => [...v, url]); else setImages((v: any[]) => [...v, url]);
       toast(isVideo ? "Video uploaded" : "Image uploaded");
-    } catch {
-      toast("Upload failed. Check your connection and try again.");
+    } catch (err: any) {
+      toast(err?.code === "storage/unauthorized" ? "Storage blocked this upload. Deploy the storage rules and make sure Firebase Storage is enabled." : `Upload failed (${err?.code ?? "unknown error"}). Please try again.`);
     } finally {
       setLoading(false);
     }
